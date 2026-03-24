@@ -14,9 +14,10 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
   BaseProvider(String endpoint) {
     this.endpoint = endpoint;
+    // Fill in your backend URL below or pass at build: --dart-define=baseUrl=https://YOUR_RENDER_SERVICE.onrender.com/
     baseUrl = const String.fromEnvironment(
       "baseUrl",
-      defaultValue: "http://localhost:5130/",
+      defaultValue: "http://localhost:5130/", // desktop url (local dev)
     );
   }
 
