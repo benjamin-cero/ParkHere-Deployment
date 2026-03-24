@@ -3,19 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:parkhere_desktop/model/business_report.dart';
 import 'package:parkhere_desktop/providers/auth_provider.dart';
+import 'package:parkhere_desktop/providers/base_provider.dart';
 
 class BusinessReportProvider with ChangeNotifier {
-  static String? baseUrl;
   BusinessReportResponse? _businessReport;
   bool _isLoading = false;
   String? _error;
 
-  BusinessReportProvider() {
-    baseUrl = const String.fromEnvironment(
-      "baseUrl",
-      defaultValue: "http://localhost:5130/",
-    );
-  }
+  BusinessReportProvider();
+
 
   BusinessReportResponse? get businessReport => _businessReport;
   bool get isLoading => _isLoading;
@@ -28,9 +24,9 @@ class BusinessReportProvider with ChangeNotifier {
 
     try {
       // Remove trailing slash from baseUrl if it exists
-      String cleanBaseUrl = baseUrl!.endsWith('/')
-          ? baseUrl!.substring(0, baseUrl!.length - 1)
-          : baseUrl!;
+      String cleanBaseUrl = (BaseProvider.baseUrl ?? '').endsWith('/')
+          ? BaseProvider.baseUrl!.substring(0, BaseProvider.baseUrl!.length - 1)
+          : (BaseProvider.baseUrl ?? '');
       var url = "$cleanBaseUrl/BusinessReport";
       var uri = Uri.parse(url);
       var headers = _createHeaders();
