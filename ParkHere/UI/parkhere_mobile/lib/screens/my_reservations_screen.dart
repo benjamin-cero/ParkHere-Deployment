@@ -1,0 +1,730 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:parkhere_mobile/model/parking_reservation.dart';
+import 'package:parkhere_mobile/model/vehicle.dart';
+import 'package:parkhere_mobile/providers/parking_reservation_provider.dart';
+import 'package:parkhere_mobile/providers/user_provider.dart';
+import 'package:parkhere_mobile/providers/vehicle_provider.dart';
+import 'package:parkhere_mobile/utils/base_textfield.dart';
+import 'package:parkhere_mobile/utils/review_dialog.dart';
+import 'package:intl/intl.dart';
+import 'package:parkhere_mobile/utils/message_utils.dart';
+
+class MyReservationsScreen extends StatefulWidget {
+  const MyReservationsScreen({super.key});
+
+  @override
+  State<MyReservationsScreen> createState() => _MyReservationsScreenState();
+}
+
+class _MyReservationsScreenState extends State<MyReservationsScreen> {
+  List<ParkingReservation> _reservations = [];
+  bool _isLoading = true;
+  List<Vehicle> _userVehicles = [];
+  String _selectedFilter = "Pending";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReservations();
+    _loadVehicles();
+  }
+
+  Future<void> _loadVehicles() async {
+    final userId = UserProvider.currentUser?.id;
+    if (userId == null) return;
+    try {
+      final provider = Provider.of<VehicleProvider>(context, listen: false);
+      final result = await provider.get(filter: {'userId': userId});
+      if (mounted) setState(() => _userVehicles = result.items ?? []);
+    } catch (_) {}
+  }
+
+  Future<void> _loadReservations() async {
+    final userId = UserProvider.currentUser?.id;
+    if (userId == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final provider = Provider.of<ParkingReservationProvider>(context, listen: false);
+      final result = await provider.get(filter: {
+        'userId': userId,
+        'excludePassed': false, // We want to see history too in this screen
+        'retrieveAll': true,
+      });
+      if (mounted) {
+        setState(() {
+          _reservations = result.items ?? [];
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _getStatus(ParkingReservation res) {
+    if (res.actualEndTime != null) return "Completed";
+    if (res.actualStartTime == null && DateTime.now().isAfter(res.endTime)) {
+      return res.isPaid ? "Completed" : "Missed";
+    }
+    if (res.actualStartTime != null) return "Arrived";
+    return "Pending";
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case "Arrived": return Colors.green;
+      case "Completed": return Colors.grey;
+      case "Missed": return Colors.orange[400]!; // Yellowish for debt
+      case "Pending": return AppColors.reserved;
+      default: return Colors.orange;
+    }
+  }
+
+  void _showEditModal(ParkingReservation res) {
+    final now = DateTime.now();
+    final isArrived = res.actualStartTime != null;
+    
+    // Allow editing if Arrived OR (Pending AND > 30 mins before)
+    if (!isArrived && res.startTime.difference(now).inMinutes < 30) {
+      MessageUtils.showError(context, "Cannot edit reservation less than 30 minutes before arrival.");
+      return;
+    }
+
+    DateTime editStartTime = res.startTime;
+    // For Arrived: Start with 0 extension. For Pending: Start with current duration.
+    int editDurationHours = isArrived ? 0 : res.endTime.difference(res.startTime).inHours;
+    int editDurationMinutes = isArrived ? 0 : res.endTime.difference(res.startTime).inMinutes % 60;
+    Vehicle? editVehicle = _userVehicles.firstWhere((v) => v.id == res.vehicleId, orElse: () => _userVehicles.first);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final effectiveDuration = Duration(hours: editDurationHours, minutes: editDurationMinutes);
+          // If Arrived: EndTime = OldEndTime + Extension
+          // If Pending: EndTime = NewStartTime + NewDuration
+          final calculatedEndTime = isArrived 
+              ? res.endTime.add(effectiveDuration)
+              : editStartTime.add(effectiveDuration);
+          
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.75,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+            ),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)))),
+                const SizedBox(height: 24),
+                Text(isArrived ? "Extend Session" : "Edit Booking", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
+                const SizedBox(height: 24),
+                
+                if (!isArrived) ...[
+                  const Text("Select Vehicle", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey[200]!)),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<Vehicle>(
+                        value: _userVehicles.any((v) => v.id == editVehicle?.id) ? editVehicle : null,
+                        isExpanded: true,
+                        items: _userVehicles.map((v) => DropdownMenuItem(value: v, child: Text("${v.name} (${v.licensePlate})"))).toList(),
+                        onChanged: (v) => setModalState(() => editVehicle = v),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
+                if (!isArrived) ...[
+                  const Text("Arrival Date & Time", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 8),
+                    GestureDetector(
+                    onTap: () async {
+                      final DateTime? pickedDate = await showDatePicker(
+                        context: context,
+                        initialDate: editStartTime,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 30)),
+                      );
+                      if (pickedDate != null) {
+                        final TimeOfDay? pickedTime = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(editStartTime));
+                        if (pickedTime != null) {
+                          setModalState(() {
+                            editStartTime = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, pickedTime.hour, pickedTime.minute);
+                          });
+                        }
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey[200]!)),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(DateFormat('MMM d, yyyy  •  hh:mm a').format(editStartTime), style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black)),
+                          Icon(Icons.calendar_month_rounded, size: 18, color: AppColors.primary),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+                const SizedBox(height: 20),
+
+                Text(isArrived ? "Extend by" : "Duration", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _buildDurationInput("Hours", editDurationHours, (v) => setModalState(() => editDurationHours = v))),
+                    const SizedBox(width: 12),
+                    Expanded(child: _buildDurationInput("Minutes", editDurationMinutes, (v) => setModalState(() => editDurationMinutes = v))),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text("Calculated Leaving: ${DateFormat('hh:mm a').format(calculatedEndTime)}", 
+                  style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold, fontSize: 13)),
+
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: AppButton(
+                    text: "Save Changes",
+                    onPressed: () async {
+                      try {
+                        final provider = Provider.of<ParkingReservationProvider>(context, listen: false);
+                        await provider.update(res.id, {
+                          'vehicleId': isArrived ? res.vehicleId : editVehicle!.id,
+                          'parkingSpotId': res.parkingSpotId,
+                          'startTime': isArrived ? res.startTime.toIso8601String() : editStartTime.toIso8601String(),
+                          'endTime': calculatedEndTime.toIso8601String(),
+                        });
+                        if (mounted) {
+                          Navigator.pop(context);
+                          _loadReservations();
+                          MessageUtils.showSuccess(context, "Reservation updated!");
+                        }
+                      } catch (_) {
+                        MessageUtils.showError(context, "Failed to update");
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _handleCancel(ParkingReservation res) {
+    final now = DateTime.now();
+    if (res.startTime.difference(now).inMinutes < 30) {
+      MessageUtils.showError(context, "Cannot cancel reservation less than 30 minutes before arrival.");
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Cancel Booking"),
+        content: const Text("Are you sure you want to cancel this reservation? This action cannot be undone."),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Keep Booking", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final provider = Provider.of<ParkingReservationProvider>(context, listen: false);
+                await provider.delete(res.id);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _loadReservations();
+                  MessageUtils.showSuccess(context, "Reservation cancelled successfully");
+                }
+              } catch (e) {
+                MessageUtils.showError(context, "Failed to cancel reservation");
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text("Yes, Cancel"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDurationInput(String label, int value, Function(int) onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.grey[200]!)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              Text("$value", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          Column(
+            children: [
+              GestureDetector(
+                onTap: () {
+                    final increment = (label == "Hours" ? 1 : 15);
+                    final max = (label == "Hours" ? 24 : 60);
+                    if (value + increment <= max) {
+                        onChanged(value + increment);
+                    }
+                }, 
+                child: const Icon(Icons.arrow_drop_up, size: 20)
+              ),
+              GestureDetector(
+                onTap: () { 
+                    final decrement = (label == "Hours" ? 1 : 15);
+                    if (value - decrement >= 0) {
+                        onChanged(value - decrement);
+                    }
+                }, 
+                child: const Icon(Icons.arrow_drop_down, size: 20)
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Filter and sort reservations
+    final filtered = _reservations.where((r) {
+      final status = _getStatus(r);
+      if (_selectedFilter == "Completed") {
+        return status == "Completed" || status == "Missed";
+      }
+      return status == _selectedFilter;
+    }).toList();
+
+    final displayList = filtered;
+
+    return Container(
+      color: AppColors.background,
+      child: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : displayList.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        physics: const BouncingScrollPhysics(),
+                        padding: const EdgeInsets.all(24),
+                        itemCount: displayList.length,
+                        itemBuilder: (context, index) => _buildReservationCard(displayList[index]),
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReservationCard(ParkingReservation res) {
+    final status = _getStatus(res);
+    final statusColor = _getStatusColor(status);
+    final now = DateTime.now();
+    
+    // Only allow editing in Pending tab, and if more than 30 mins away
+    final isPending = status == "Pending";
+    final isArrived = status == "Arrived";
+    // Allow edit if Pending (>30m) OR Arrived (Active) AND NOT Overtime
+    final isOvertime = isArrived && now.isAfter(res.endTime);
+    final canEdit = (isPending && res.startTime.difference(now).inMinutes > 30) || (isArrived && !isOvertime);
+    
+    final spot = res.parkingSpot;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: status == "Missed" ? Colors.orange[50]?.withOpacity(0.5) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: statusColor.withOpacity(0.4), width: status == "Missed" ? 2 : 1),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
+      ),
+      child: Column(
+        children: [
+          // Card Header with status color
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Row(
+              children: [
+                Icon(status == "Missed" ? Icons.warning_amber_rounded : Icons.local_parking_rounded, color: statusColor, size: 20),
+                const SizedBox(width: 12),
+                Text(status.toUpperCase(), style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.1)),
+                const Spacer(),
+                Text(DateFormat('MMM dd, yyyy').format(res.startTime), style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              ],
+            ),
+          ),
+          
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            spot?.name ?? "Spot #${res.parkingSpotId}", 
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppColors.primaryDark)
+                          ),
+                          const SizedBox(height: 4),
+                          if (spot != null)
+                             Text(
+                              "${spot.parkingSectorName} • ${spot.parkingWingName}", 
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)
+                            ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "${res.vehicle?.name ?? 'Vehicle'} • ${res.vehicle?.licensePlate ?? ''}", 
+                            style: const TextStyle(fontSize: 14, color: AppColors.textLight)
+                          ),
+                        ],
+                      ),
+                    ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              status == "Completed" ? "TOTAL PAID: ${res.price.toStringAsFixed(2)} BAM" : "${res.price.toStringAsFixed(2)} BAM",
+                              style: TextStyle(
+                                fontSize: status == "Completed" ? 18 : 16, 
+                                fontWeight: FontWeight.w900, 
+                                color: status == "Completed" ? Colors.green[800] : AppColors.primaryDark,
+                                letterSpacing: -0.5
+                              )
+                            ),
+                            
+                            if (status == "Completed") ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                "Base: ${(res.price - (res.extraCharge ?? 0) - (res.includedDebt ?? 0)).toStringAsFixed(2)} BAM",
+                                style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.bold),
+                              ),
+                              if (res.extraCharge != null && res.extraCharge! > 0)
+                                Text(
+                                  "Overtime: +${res.extraCharge!.toStringAsFixed(2)} BAM",
+                                  style: const TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold),
+                                ),
+                              if (res.includedDebt != null && res.includedDebt! > 0)
+                                Text(
+                                  "Debt: +${res.includedDebt!.toStringAsFixed(2)} BAM",
+                                  style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
+                                ),
+                            ] else ...[
+                               // Active session real-time overtime
+                               if (isArrived && isOvertime) ...[
+                                  Text(
+                                    "+ ${(() {
+                                        final diff = now.difference(res.endTime);
+                                        final multiplier = spot?.priceMultiplier ?? 1.0;
+                                        final penaltyRatePerMinute = (3.0 * multiplier / 60.0) * 1.5;
+                                        return (diff.inMinutes * penaltyRatePerMinute).toStringAsFixed(2);
+                                      })()} OVERTIME",
+                                    style: const TextStyle(fontSize: 11, color: Colors.redAccent, fontWeight: FontWeight.bold),
+                                  ),
+                               ],
+                               if (res.includedDebt != null && res.includedDebt! > 0)
+                                 Text(
+                                   "(Incl. ${res.includedDebt!.toStringAsFixed(2)} debt)",
+                                   style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
+                                 ),
+                            ],
+                          ],
+                        ),
+                  ],
+                ),
+                const Divider(height: 40),
+                
+                // Spot Details Tag
+                if (spot != null) ...[
+                   Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: (status == "Missed" ? Colors.orange : AppColors.primary).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                        child: _buildMiniInfo(Icons.category_rounded, spot.parkingSpotTypeName, false),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildInfoColumn(
+                      "Arrival", 
+                      DateFormat('HH:mm').format(
+                        (res.actualStartTime != null && res.actualStartTime!.isBefore(res.startTime))
+                          ? res.actualStartTime!
+                          : res.startTime
+                      ), 
+                      false
+                    ),
+                    _buildInfoColumn(
+                      "Departure", 
+                      DateFormat('HH:mm').format(
+                        (res.actualEndTime != null && res.actualEndTime!.isAfter(res.endTime))
+                          ? res.actualEndTime!
+                          : res.endTime
+                      ), 
+                      false
+                    ),
+                    _buildInfoColumn("Date", DateFormat('MMM dd').format(res.startTime), false),
+                  ],
+                ),
+                
+                 if (isPending) ...[
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: canEdit ? () => _showEditModal(res) : null,
+                          icon: Icon(canEdit ? Icons.edit_note_rounded : Icons.lock_outline_rounded, size: 20),
+                          label: Text(canEdit ? "Edit" : "Locked"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.grey[200],
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 1,
+                        child: OutlinedButton.icon(
+                          onPressed: canEdit ? () => _handleCancel(res) : null,
+                          icon: const Icon(Icons.cancel_outlined, size: 20),
+                          label: const Text("Cancel"),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.redAccent,
+                            side: BorderSide(color: canEdit ? Colors.redAccent : Colors.grey[200]!),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                
+                if (isArrived) ...[
+                  const SizedBox(height: 24),
+                   Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: isOvertime ? null : () => _showEditModal(res),
+                          icon: const Icon(Icons.edit_note_rounded, size: 20),
+                          label: Text(isOvertime ? "Overtime - Please Exit" : "Extend Session"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isOvertime ? Colors.grey : Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          "ACTIVE SESSION", 
+                          style: TextStyle(
+                            color: Colors.green[700], 
+                            fontWeight: FontWeight.w900, 
+                            fontSize: 10,
+                            letterSpacing: 1.5
+                          )
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+
+                if (status == "Missed") ...[
+                   const SizedBox(height: 24),
+                   Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.orange.withOpacity(0.3))),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                        SizedBox(width: 8),
+                        Text("Unpaid Missed Booking", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('My Bookings', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
+                    Text('Manage your parking sessions', style: TextStyle(color: AppColors.textLight)),
+                  ],
+                ),
+              ),
+              IconButton(onPressed: _loadReservations, icon: const Icon(Icons.refresh_rounded, color: AppColors.primary)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: ["Pending", "Arrived", "Completed"].map((filter) {
+                final isSelected = _selectedFilter == filter;
+                Color activeColor;
+                switch(filter) {
+                  case "Pending": activeColor = AppColors.reserved; break;
+                  case "Arrived": activeColor = Colors.green; break;
+                  default: activeColor = Colors.grey[600]!;
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedFilter = filter),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isSelected ? activeColor : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isSelected ? activeColor : Colors.grey[300]!),
+                      ),
+                      child: Text(
+                        filter,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.grey[600],
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.calendar_today_rounded, size: 80, color: AppColors.primary.withOpacity(0.1)),
+          const SizedBox(height: 24),
+          const Text("No bookings yet", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
+          const SizedBox(height: 8),
+          const Text("Explore spots to make your first reservation!", style: TextStyle(color: AppColors.textLight)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniInfo(IconData icon, String label, bool isFeatured) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: isFeatured ? Colors.white70 : AppColors.textLight),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: isFeatured ? Colors.white70 : AppColors.textLight)),
+      ],
+    );
+  }
+
+  Widget _buildInfoColumn(String label, String value, bool isFeatured) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11, color: isFeatured ? Colors.white.withOpacity(0.6) : AppColors.textLight, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isFeatured ? Colors.white : AppColors.primaryDark)),
+      ],
+    );
+  }
+}
