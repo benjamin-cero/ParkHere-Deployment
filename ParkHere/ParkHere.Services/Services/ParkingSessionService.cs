@@ -85,7 +85,7 @@ namespace ParkHere.Services.Services
                 session = new ParkingSession
                 {
                     ParkingReservationId = reservationId,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 };
                 _context.ParkingSessions.Add(session);
             }

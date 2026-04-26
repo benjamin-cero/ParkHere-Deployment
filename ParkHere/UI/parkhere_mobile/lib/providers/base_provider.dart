@@ -17,7 +17,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     // Override at build time: --dart-define=baseUrl=https://...
     baseUrl = const String.fromEnvironment(
       "baseUrl",
-      defaultValue: "https://parkhere-deployment.onrender.com/",
+      defaultValue: "http://localhost:5130/",
     );
   }
 
@@ -51,6 +51,18 @@ abstract class BaseProvider<T> with ChangeNotifier {
 
     if (isValidResponse(response)) {
       var data = jsonDecode(response.body);
+
+      // DEBUG: Show raw response for reservation requests
+      if (endpoint.contains("Reservation")) {
+        final items = data["items"];
+        if (items != null && items.isNotEmpty) {
+          final first = items[0];
+          print('=== RAW API RESPONSE DEBUG ===');
+          print('  URL: $url');
+          print('  startTime raw: ${first["startTime"]}');
+          print('  endTime raw: ${first["endTime"]}');
+        }
+      }
 
       var result = SearchResult<T>();
 

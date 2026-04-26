@@ -207,6 +207,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             final end = res.endTime;
             final isArrived = res.actualStartTime != null;
 
+            // DEBUG: trace what values are used for the countdown
+            if (refreshCounter <= 1) {
+              debugPrint('=== DASHBOARD TIMER DEBUG (res ${res.id}) ===');
+              debugPrint('  now       = $now (isUtc: ${now.isUtc}, ms: ${now.millisecondsSinceEpoch})');
+              debugPrint('  startTime = $start (isUtc: ${start.isUtc}, ms: ${start.millisecondsSinceEpoch})');
+              debugPrint('  endTime   = $end (isUtc: ${end.isUtc}, ms: ${end.millisecondsSinceEpoch})');
+              debugPrint('  startDiff = ${start.difference(now)}');
+              debugPrint('  endDiff   = ${end.difference(now)}');
+            }
+
             if (isArrived) {
                 final diff = end.difference(now);
                 if (diff.isNegative) {
@@ -1165,8 +1175,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             'userId': userId,
             'vehicleId': _selectedVehicle!.id,
             'parkingSpotId': spot.id,
-            'startTime': _startTime.toUtc().toIso8601String(),
-            'endTime': endTime.toUtc().toIso8601String(),
+            'startTime': _startTime.toIso8601String(),
+            'endTime': endTime.toIso8601String(),
             'isPaid': false,
           });
 

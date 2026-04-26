@@ -205,8 +205,8 @@ class _MyReservationsScreenState extends State<MyReservationsScreen> {
                         await provider.update(res.id, {
                           'vehicleId': isArrived ? res.vehicleId : editVehicle!.id,
                           'parkingSpotId': res.parkingSpotId,
-                          'startTime': isArrived ? res.startTime.toUtc().toIso8601String() : editStartTime.toUtc().toIso8601String(),
-                          'endTime': calculatedEndTime.toUtc().toIso8601String(),
+                          'startTime': isArrived ? res.startTime.toIso8601String() : editStartTime.toIso8601String(),
+                          'endTime': calculatedEndTime.toIso8601String(),
                         });
                         if (mounted) {
                           Navigator.pop(context);

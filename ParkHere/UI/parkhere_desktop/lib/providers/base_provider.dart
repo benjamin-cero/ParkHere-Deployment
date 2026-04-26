@@ -17,7 +17,7 @@ abstract class BaseProvider<T> with ChangeNotifier {
     // Override at build time: --dart-define=baseUrl=https://...
     baseUrl = const String.fromEnvironment(
       "baseUrl",
-      defaultValue: "https://parkhere-deployment.onrender.com/",
+      defaultValue: "http://localhost:5130/",
     );
   }
 

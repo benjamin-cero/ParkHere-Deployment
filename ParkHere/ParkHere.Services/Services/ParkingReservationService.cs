@@ -151,7 +151,7 @@ namespace ParkHere.Services.Services
                 ActualEndTime = null,
                 ExtraMinutes = null,
                 ExtraCharge = null,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
             
             _context.ParkingSessions.Add(session);
@@ -276,10 +276,10 @@ namespace ParkHere.Services.Services
             if (request.EndTime > entity.EndTime && !isActiveSession)
             {
                 // If reservation is already expired
-                if (DateTime.UtcNow > entity.EndTime)
+                if (DateTime.Now > entity.EndTime)
                 {
                     // Allow extension only within 30 minutes of expiry
-                    if ((DateTime.UtcNow - entity.EndTime).TotalMinutes > 30)
+                    if ((DateTime.Now - entity.EndTime).TotalMinutes > 30)
                     {
                         throw new InvalidOperationException("Too late to extend. Reservation expired more than 30 minutes ago.");
                     }

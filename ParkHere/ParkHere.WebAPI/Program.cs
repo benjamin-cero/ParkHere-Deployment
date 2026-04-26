@@ -1,4 +1,6 @@
 using ParkHere.Services.Database;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Mapster;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi.Models;
@@ -67,7 +69,13 @@ builder.Services.AddControllers(x =>
     {
         x.Filters.Add<ExceptionFilter>();
     }
-);
+)
+.AddJsonOptions(options =>
+{
+    // Strip timezone suffixes (Z, +02:00) so Flutter clients parse dates as local time
+    options.JsonSerializerOptions.Converters.Add(new LocalDateTimeConverter());
+    options.JsonSerializerOptions.Converters.Add(new NullableLocalDateTimeConverter());
+});
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -192,3 +200,45 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+/// <summary>
+/// Serializes DateTime values WITHOUT timezone suffix (no Z, no +02:00).
+/// This ensures Flutter's DateTime.parse treats them as local time on the device.
+/// </summary>
+public class LocalDateTimeConverter : JsonConverter<DateTime>
+{
+    public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        return DateTime.Parse(reader.GetString()!);
+    }
+
+    public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
+    {
+        // Always write as local time without timezone offset
+        if (value.Kind == DateTimeKind.Utc)
+            value = value.ToLocalTime();
+        writer.WriteStringValue(value.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"));
+    }
+}
+
+public class NullableLocalDateTimeConverter : JsonConverter<DateTime?>
+{
+    public override DateTime? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        var str = reader.GetString();
+        return str == null ? null : DateTime.Parse(str);
+    }
+
+    public override void Write(Utf8JsonWriter writer, DateTime? value, JsonSerializerOptions options)
+    {
+        if (value == null)
+        {
+            writer.WriteNullValue();
+            return;
+        }
+        var dt = value.Value;
+        if (dt.Kind == DateTimeKind.Utc)
+            dt = dt.ToLocalTime();
+        writer.WriteStringValue(dt.ToString("yyyy-MM-ddTHH:mm:ss.fffffff"));
+    }
+}
