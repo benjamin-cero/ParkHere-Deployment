@@ -204,12 +204,22 @@ app.Run();
 /// <summary>
 /// Serializes DateTime values WITHOUT timezone suffix (no Z, no +02:00).
 /// This ensures Flutter's DateTime.parse treats them as local time on the device.
+///
+/// CRITICAL: The DB uses "timestamp with time zone" (timestamptz) columns.
+/// With EnableLegacyTimestampBehavior=true, Npgsql treats Kind=Unspecified as UTC
+/// when writing to timestamptz. Flutter clients send local times without Z suffix,
+/// which .NET parses as Kind=Unspecified. We must explicitly mark them as Local
+/// so Npgsql correctly converts local→UTC on write, and UTC→local on read.
 /// </summary>
 public class LocalDateTimeConverter : JsonConverter<DateTime>
 {
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        return DateTime.Parse(reader.GetString()!);
+        var dt = DateTime.Parse(reader.GetString()!);
+        // Mark as Local so Npgsql treats it as local time (not UTC) when writing to timestamptz
+        if (dt.Kind == DateTimeKind.Unspecified)
+            dt = DateTime.SpecifyKind(dt, DateTimeKind.Local);
+        return dt;
     }
 
     public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
@@ -226,7 +236,12 @@ public class NullableLocalDateTimeConverter : JsonConverter<DateTime?>
     public override DateTime? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         var str = reader.GetString();
-        return str == null ? null : DateTime.Parse(str);
+        if (str == null) return null;
+        var dt = DateTime.Parse(str);
+        // Mark as Local so Npgsql treats it as local time (not UTC) when writing to timestamptz
+        if (dt.Kind == DateTimeKind.Unspecified)
+            dt = DateTime.SpecifyKind(dt, DateTimeKind.Local);
+        return dt;
     }
 
     public override void Write(Utf8JsonWriter writer, DateTime? value, JsonSerializerOptions options)
