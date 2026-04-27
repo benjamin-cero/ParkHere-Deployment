@@ -22,13 +22,13 @@ class MasterScreen extends StatefulWidget {
     required this.title,
     this.showBackButton = false,
     this.onBack,
+    this.floatingActionButton,
   });
   final Widget child;
   final String title;
   final bool showBackButton;
   final VoidCallback? onBack;
-
-
+  final Widget? floatingActionButton;
 
   // Persist sidebar state globally across screen rebuilds
   static bool isSidebarExpanded = false; 
@@ -317,6 +317,7 @@ class _MasterScreenState extends State<MasterScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      floatingActionButton: widget.floatingActionButton,
       body: Row(
         children: [
           // Fixed Sidebar

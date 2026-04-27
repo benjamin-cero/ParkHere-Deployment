@@ -85,6 +85,21 @@ class _CityListScreenState extends State<CityListScreen> {
   Widget build(BuildContext context) {
     return MasterScreen(
       title: "Cities",
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const CityDetailsScreen(),
+              settings: const RouteSettings(name: 'CityDetailsScreen'),
+            ),
+          );
+        },
+        backgroundColor: const Color(0xFF1E3A8A),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text("Add City"),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
