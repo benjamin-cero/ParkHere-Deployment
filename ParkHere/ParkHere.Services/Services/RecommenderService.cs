@@ -111,9 +111,9 @@ namespace ParkHere.Services.Services
         public static void TriggerRetraining(IServiceProvider serviceProvider)
         {
             // Cooldown of 30 seconds to prevent excessive retraining
-            if ((DateTime.Now - _lastRetrainTime).TotalSeconds < 30) return;
+            if ((DateTime.UtcNow - _lastRetrainTime).TotalSeconds < 30) return;
 
-            _lastRetrainTime = DateTime.Now;
+            _lastRetrainTime = DateTime.UtcNow;
             _ = Task.Run(() =>
             {
                 try

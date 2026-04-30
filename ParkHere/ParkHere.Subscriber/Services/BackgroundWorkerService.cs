@@ -261,7 +261,7 @@ namespace ParkHere.Subscriber.Services
                     <tr>
                         <td style=""background-color: #1e293b; padding: 35px 40px; text-align: center;"">
                             <p style=""margin: 0 0 10px 0; color: #94a3b8; font-size: 12px; font-weight: 500;"">
-                                © {DateTime.Now.Year} ParkHere. All rights reserved.
+                                © {DateTime.UtcNow.Year} ParkHere. All rights reserved.
                             </p>
                             <p style=""margin: 0; color: #64748b; font-size: 11px;"">
                                 Automated email - Please do not reply

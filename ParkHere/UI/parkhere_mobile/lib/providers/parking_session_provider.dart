@@ -15,7 +15,7 @@ class ParkingSessionProvider extends BaseProvider<dynamic> {
   
   Future<void> setActualEndTime(int reservationId, {DateTime? actualEndTime}) async {
     var url = "${BaseProvider.baseUrl}$endpoint/set-end-time/$reservationId";
-    String body = actualEndTime != null ? '"${actualEndTime.toIso8601String()}"' : "";
+    String body = actualEndTime != null ? '"${actualEndTime.toUtc().toIso8601String()}"' : "";
     
     var response = await http.post(
       Uri.parse(url), 

@@ -466,8 +466,8 @@ class _ParkingExplorerScreenState extends State<ParkingExplorerScreen> {
             'userId': userId,
             'vehicleId': _selectedVehicle!.id,
             'parkingSpotId': spot.id,
-            'startTime': _startTime.toIso8601String(),
-            'endTime': endTime.toIso8601String(),
+            'startTime': _startTime.toUtc().toIso8601String(),
+            'endTime': endTime.toUtc().toIso8601String(),
             'isPaid': false,
           });
 

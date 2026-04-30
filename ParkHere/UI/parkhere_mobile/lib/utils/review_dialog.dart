@@ -198,7 +198,7 @@ class _ReviewDialogState extends State<ReviewDialog> {
         'comment': _commentController.text,
         'reservationId': widget.reservationId,
         'userId': UserProvider.currentUser?.id,
-        'createdAt': DateTime.now().toIso8601String(),
+        'createdAt': DateTime.now().toUtc().toIso8601String(),
       };
 
       await reviewProvider.insert(req);

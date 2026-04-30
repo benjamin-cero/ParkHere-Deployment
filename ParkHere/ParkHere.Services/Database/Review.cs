@@ -23,7 +23,7 @@ namespace ParkHere.Services.Database
         [MaxLength(1000)]
         public string? Comment { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // Navigation properties
         [ForeignKey(nameof(UserId))]

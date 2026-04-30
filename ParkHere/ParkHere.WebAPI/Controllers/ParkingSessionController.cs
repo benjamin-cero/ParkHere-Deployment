@@ -52,7 +52,7 @@ namespace ParkHere.WebAPI.Controllers
         {
             try
             {
-                var result = await _service.SetActualEndTimeAsync(reservationId, actualEndTime ?? DateTime.Now);
+                var result = await _service.SetActualEndTimeAsync(reservationId, actualEndTime ?? DateTime.UtcNow);
                 return Ok(result);
             }
             catch (InvalidOperationException ex)

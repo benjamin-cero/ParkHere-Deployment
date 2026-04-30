@@ -30,7 +30,7 @@ Map<String, dynamic> _$ReviewToJson(Review instance) => <String, dynamic>{
       'comment': instance.comment,
       'userId': instance.userId,
       'reservationId': instance.reservationId,
-      'createdAt': instance.createdAt.toIso8601String(),
+      'createdAt': instance.createdAt.toUtc().toIso8601String(),
       'user': instance.user,
       'parkingReservation': instance.parkingReservation,
     };

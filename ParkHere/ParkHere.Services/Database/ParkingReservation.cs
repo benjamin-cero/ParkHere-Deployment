@@ -20,7 +20,7 @@ namespace ParkHere.Services.Database
         public decimal Price { get; set; }
         public decimal? IncludedDebt { get; set; }
         public bool IsPaid { get; set; } = false;
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [ForeignKey(nameof(UserId))]
         public User User { get; set; } = null!;

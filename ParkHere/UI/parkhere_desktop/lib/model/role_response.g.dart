@@ -21,6 +21,6 @@ Map<String, dynamic> _$RoleResponseToJson(RoleResponse instance) =>
       'id': instance.id,
       'name': instance.name,
       'description': instance.description,
-      'createdAt': instance.createdAt?.toIso8601String(),
+      'createdAt': instance.createdAt?.toUtc().toIso8601String(),
       'isActive': instance.isActive,
     };

@@ -32,11 +32,11 @@ Map<String, dynamic> _$ParkingSessionToJson(ParkingSession instance) =>
     <String, dynamic>{
       'id': instance.id,
       'parkingReservationId': instance.parkingReservationId,
-      'actualStartTime': instance.actualStartTime?.toIso8601String(),
-      'arrivalTime': instance.arrivalTime?.toIso8601String(),
-      'actualEndTime': instance.actualEndTime?.toIso8601String(),
+      'actualStartTime': instance.actualStartTime?.toUtc().toIso8601String(),
+      'arrivalTime': instance.arrivalTime?.toUtc().toIso8601String(),
+      'actualEndTime': instance.actualEndTime?.toUtc().toIso8601String(),
       'extraMinutes': instance.extraMinutes,
       'extraCharge': instance.extraCharge,
-      'createdAt': instance.createdAt.toIso8601String(),
+      'createdAt': instance.createdAt.toUtc().toIso8601String(),
       'parkingReservation': instance.parkingReservation,
     };

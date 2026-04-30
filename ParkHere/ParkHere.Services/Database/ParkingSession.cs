@@ -20,7 +20,7 @@ namespace ParkHere.Services.Database
         public int? ExtraMinutes { get; set; }
         public decimal? ExtraCharge { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [ForeignKey(nameof(ParkingReservationId))]
         public ParkingReservation ParkingReservation { get; set; } = null!;

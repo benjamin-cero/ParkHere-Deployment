@@ -26,7 +26,7 @@ Map<String, dynamic> _$ReviewToJson(Review instance) => <String, dynamic>{
       'id': instance.id,
       'rating': instance.rating,
       'comment': instance.comment,
-      'createdAt': instance.createdAt.toIso8601String(),
+      'createdAt': instance.createdAt.toUtc().toIso8601String(),
       'userId': instance.userId,
       'reservationId': instance.reservationId,
       'parkingReservation': instance.parkingReservation,

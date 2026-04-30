@@ -85,7 +85,7 @@ namespace ParkHere.Services.Services
                 session = new ParkingSession
                 {
                     ParkingReservationId = reservationId,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTime.UtcNow
                 };
                 _context.ParkingSessions.Add(session);
             }
@@ -95,12 +95,12 @@ namespace ParkHere.Services.Services
 
             // Prevent arrival for expired reservations
             var reservation = await _context.ParkingReservations.FindAsync(reservationId);
-            if (reservation != null && reservation.EndTime < DateTime.Now)
+            if (reservation != null && reservation.EndTime < DateTime.UtcNow)
             {
                 throw new InvalidOperationException("Cannot register arrival for an expired reservation.");
             }
 
-            session.ArrivalTime = DateTime.Now;
+            session.ArrivalTime = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return _mapper.Map<ParkingSessionResponse>(session);
@@ -122,7 +122,7 @@ namespace ParkHere.Services.Services
             if (session.ActualStartTime.HasValue)
                 throw new InvalidOperationException("Actual start time has already been set for this session.");
 
-            DateTime now = DateTime.Now;
+            DateTime now = DateTime.UtcNow;
             DateTime reservedStart = session.ParkingReservation.StartTime;
             
             // Set ActualStartTime to NOW (when admin approves)

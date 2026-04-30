@@ -21,7 +21,7 @@ namespace ParkHere.Services.Services
 
         public async Task<BusinessReportResponse> GetBusinessReport()
         {
-            var today = DateTime.Now;
+            var today = DateTime.UtcNow;
 
             // Basic stats
             var reservations = await _context.ParkingReservations

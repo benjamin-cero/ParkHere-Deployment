@@ -87,7 +87,7 @@ namespace ParkHere.Services.Services
             var users = await query.ToListAsync();
             var userIds = users.Select(u => u.Id).ToList();
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var debts = await _context.ParkingReservations
                 .Where(r => userIds.Contains(r.UserId) && r.IsPaid == false && r.EndTime < now)
                 .Where(r => !_context.ParkingSessions.Any(s => s.ParkingReservationId == r.Id && s.ActualStartTime != null))
@@ -123,7 +123,7 @@ namespace ParkHere.Services.Services
 
             var response = MapToResponse(user);
             
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var debt = await _context.ParkingReservations
                 .Where(r => r.UserId == id && r.IsPaid == false && r.EndTime < now)
                 .Where(r => !_context.ParkingSessions.Any(s => s.ParkingReservationId == r.Id && s.ActualStartTime != null))
@@ -158,7 +158,7 @@ namespace ParkHere.Services.Services
                 GenderId = request.GenderId,
                 CityId = request.CityId,
                 IsActive = request.IsActive,
-                CreatedAt = DateTime.Now,
+                CreatedAt = DateTime.UtcNow,
                 Picture = request.Picture
             };
 
@@ -181,7 +181,7 @@ namespace ParkHere.Services.Services
                     {
                         UserId = user.Id,
                         RoleId = roleId,
-                        DateAssigned = DateTime.Now
+                        DateAssigned = DateTime.UtcNow
                     };
                     _context.UserRoles.Add(userRole);
                 }
@@ -242,7 +242,7 @@ namespace ParkHere.Services.Services
                     {
                         UserId = user.Id,
                         RoleId = roleId,
-                        DateAssigned = DateTime.Now
+                        DateAssigned = DateTime.UtcNow
                     };
                     _context.UserRoles.Add(userRole);
                 }
@@ -321,7 +321,7 @@ namespace ParkHere.Services.Services
                 return null;
 
             // Update last login time
-            user.LastLoginAt = DateTime.Now;
+            user.LastLoginAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
             return MapToResponse(user);

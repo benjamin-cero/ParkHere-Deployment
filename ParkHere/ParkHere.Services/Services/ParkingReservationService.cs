@@ -56,7 +56,7 @@ namespace ParkHere.Services.Services
 
             if (search.ExcludePassed == true)
             {
-                query = query.Where(x => x.EndTime > DateTime.Now);
+                query = query.Where(x => x.EndTime > DateTime.UtcNow);
             }
 
             query = query.OrderByDescending(x => x.StartTime);
@@ -67,7 +67,7 @@ namespace ParkHere.Services.Services
         protected override async Task BeforeInsert(ParkingReservation entity, ParkingReservationInsertRequest request)
         {
             // Prevent booking in the past
-            if (request.StartTime < DateTime.Now)
+            if (request.StartTime < DateTime.UtcNow)
             {
                 throw new InvalidOperationException("Cannot create a reservation with a start time in the past.");
             }
@@ -114,7 +114,7 @@ namespace ParkHere.Services.Services
 
             // NO-SHOW DEBT LOGIC
             var noShowReservations = await _context.ParkingReservations
-                .Where(r => r.UserId == request.UserId && r.IsPaid == false && r.EndTime < DateTime.Now)
+                .Where(r => r.UserId == request.UserId && r.IsPaid == false && r.EndTime < DateTime.UtcNow)
                 .ToListAsync();
 
             decimal totalDebt = 0;
@@ -151,7 +151,7 @@ namespace ParkHere.Services.Services
                 ActualEndTime = null,
                 ExtraMinutes = null,
                 ExtraCharge = null,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
             
             _context.ParkingSessions.Add(session);
@@ -172,7 +172,7 @@ namespace ParkHere.Services.Services
         public async Task<decimal> GetDebtAsync(int userId)
         {
             var noShowReservations = await _context.ParkingReservations
-                .Where(r => r.UserId == userId && r.IsPaid == false && r.EndTime < DateTime.Now)
+                .Where(r => r.UserId == userId && r.IsPaid == false && r.EndTime < DateTime.UtcNow)
                 .ToListAsync();
 
             decimal totalDebt = 0;
@@ -251,7 +251,7 @@ namespace ParkHere.Services.Services
 
             // 0. Prevent updating pending reservations to past times
             bool isPending = session?.ActualStartTime == null;
-            if (isPending && request.StartTime < DateTime.Now)
+            if (isPending && request.StartTime < DateTime.UtcNow)
             {
                 throw new InvalidOperationException("Cannot update a pending reservation with a start time in the past.");
             }
@@ -276,10 +276,10 @@ namespace ParkHere.Services.Services
             if (request.EndTime > entity.EndTime && !isActiveSession)
             {
                 // If reservation is already expired
-                if (DateTime.Now > entity.EndTime)
+                if (DateTime.UtcNow > entity.EndTime)
                 {
                     // Allow extension only within 30 minutes of expiry
-                    if ((DateTime.Now - entity.EndTime).TotalMinutes > 30)
+                    if ((DateTime.UtcNow - entity.EndTime).TotalMinutes > 30)
                     {
                         throw new InvalidOperationException("Too late to extend. Reservation expired more than 30 minutes ago.");
                     }
