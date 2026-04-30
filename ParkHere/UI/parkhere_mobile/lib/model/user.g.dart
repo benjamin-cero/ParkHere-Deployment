@@ -15,10 +15,10 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
   picture: json['picture'] as String?,
   isActive: json['isActive'] as bool? ?? true,
   phoneNumber: json['phoneNumber'] as String?,
-  createdAt: DateTime.parse(json['createdAt'] as String),
+  createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
   lastLoginAt: json['lastLoginAt'] == null
       ? null
-      : DateTime.parse(json['lastLoginAt'] as String),
+      : DateTime.parse(json['lastLoginAt'] as String).toLocal(),
   genderId: (json['genderId'] as num?)?.toInt() ?? 0,
   genderName: json['genderName'] as String? ?? '',
   cityId: (json['cityId'] as num?)?.toInt() ?? 0,

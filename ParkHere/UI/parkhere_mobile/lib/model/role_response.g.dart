@@ -12,7 +12,7 @@ RoleResponse _$RoleResponseFromJson(Map<String, dynamic> json) => RoleResponse(
   description: json['description'] as String? ?? '',
   createdAt: json['createdAt'] == null
       ? null
-      : DateTime.parse(json['createdAt'] as String),
+      : DateTime.parse(json['createdAt'] as String).toLocal(),
   isActive: json['isActive'] as bool? ?? true,
 );
 

@@ -10,7 +10,7 @@ Review _$ReviewFromJson(Map<String, dynamic> json) => Review(
       id: (json['id'] as num?)?.toInt() ?? 0,
       rating: (json['rating'] as num?)?.toInt() ?? 0,
       comment: json['comment'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       userId: (json['userId'] as num?)?.toInt() ?? 0,
       reservationId: (json['reservationId'] as num?)?.toInt() ?? 0,
       parkingReservation: json['parkingReservation'] == null

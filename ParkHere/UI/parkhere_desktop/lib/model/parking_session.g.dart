@@ -13,16 +13,16 @@ ParkingSession _$ParkingSessionFromJson(Map<String, dynamic> json) =>
           (json['parkingReservationId'] as num?)?.toInt() ?? 0,
       actualStartTime: json['actualStartTime'] == null
           ? null
-          : DateTime.parse(json['actualStartTime'] as String),
+          : DateTime.parse(json['actualStartTime'] as String).toLocal(),
       arrivalTime: json['arrivalTime'] == null
           ? null
-          : DateTime.parse(json['arrivalTime'] as String),
+          : DateTime.parse(json['arrivalTime'] as String).toLocal(),
       actualEndTime: json['actualEndTime'] == null
           ? null
-          : DateTime.parse(json['actualEndTime'] as String),
+          : DateTime.parse(json['actualEndTime'] as String).toLocal(),
       extraMinutes: (json['extraMinutes'] as num?)?.toInt(),
       extraCharge: (json['extraCharge'] as num?)?.toDouble(),
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       parkingReservation: ParkingReservation.fromJson(
         json['parkingReservation'] as Map<String, dynamic>,
       ),

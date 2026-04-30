@@ -12,11 +12,11 @@ ParkingReservation _$ParkingReservationFromJson(Map<String, dynamic> json) =>
       userId: (json['userId'] as num?)?.toInt() ?? 0,
       vehicleId: (json['vehicleId'] as num?)?.toInt() ?? 0,
       parkingSpotId: (json['parkingSpotId'] as num?)?.toInt() ?? 0,
-      startTime: DateTime.parse(json['startTime'] as String),
-      endTime: DateTime.parse(json['endTime'] as String),
+      startTime: DateTime.parse(json['startTime'] as String).toLocal(),
+      endTime: DateTime.parse(json['endTime'] as String).toLocal(),
       price: (json['price'] as num?)?.toDouble() ?? 0,
       isPaid: json['isPaid'] as bool? ?? false,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
       user: json['user'] == null
           ? null
           : User.fromJson(json['user'] as Map<String, dynamic>),
@@ -28,13 +28,13 @@ ParkingReservation _$ParkingReservationFromJson(Map<String, dynamic> json) =>
           : ParkingSpot.fromJson(json['parkingSpot'] as Map<String, dynamic>),
       arrivalTime: json['arrivalTime'] == null
           ? null
-          : DateTime.parse(json['arrivalTime'] as String),
+          : DateTime.parse(json['arrivalTime'] as String).toLocal(),
       actualStartTime: json['actualStartTime'] == null
           ? null
-          : DateTime.parse(json['actualStartTime'] as String),
+          : DateTime.parse(json['actualStartTime'] as String).toLocal(),
       actualEndTime: json['actualEndTime'] == null
           ? null
-          : DateTime.parse(json['actualEndTime'] as String),
+          : DateTime.parse(json['actualEndTime'] as String).toLocal(),
       extraCharge: (json['extraCharge'] as num?)?.toDouble(),
       includedDebt: (json['includedDebt'] as num?)?.toDouble(),
     );

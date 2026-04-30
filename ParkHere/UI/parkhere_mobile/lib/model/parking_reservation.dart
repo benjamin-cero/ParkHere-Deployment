@@ -57,7 +57,7 @@ class ParkingReservation {
           endTime: DateTime.parse(json['endTime'] ?? json['EndTime']).toLocal(),
           price: (json['price'] as num?)?.toDouble() ?? (json['Price'] as num?)?.toDouble() ?? 0.0,
           isPaid: json['isPaid'] as bool? ?? json['IsPaid'] as bool? ?? false,
-          createdAt: DateTime.parse(json['createdAt'] ?? json['CreatedAt'] ?? DateTime.now().toUtc().toIso8601String()).toLocal(),
+          createdAt: DateTime.parse(json['createdAt'] ?? json['CreatedAt'] ?? DateTime.now().toLocal().toUtc().toIso8601String()).toLocal(),
           
           user: (json['user'] != null) ? User.fromJson(json['user']) : (json['User'] != null ? User.fromJson(json['User']) : null),
           vehicle: (json['vehicle'] != null) ? Vehicle.fromJson(json['vehicle']) : (json['Vehicle'] != null ? Vehicle.fromJson(json['Vehicle']) : null),
